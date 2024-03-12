@@ -117,7 +117,7 @@ func (t *task) Start(ctx context.Context) error {
 
 	// add your logic here
 	var gpus int
-	fmt.Printf("%s,%s,%s,%s,%s,%s\n", "pod.Name", "pod.Namespace", "pod.Status.PodIP", "pod.Spec.NodeName", "pod.Status.Phase", "gpunums")
+	fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20s\n", "pod.Name", "pod.Namespace", "pod.Status.PodIP", "pod.Spec.NodeName", "pod.Status.Phase", "gpunums")
 	for _, ns := range t.namespace {
 		podList, err := t.client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
@@ -130,7 +130,8 @@ func (t *task) Start(ctx context.Context) error {
 				pod.DeletionTimestamp == nil {
 				reqs := resource.PodRequests(&pod, resource.PodResourcesOptions{})
 				gpu := reqs["nvidia.com/gpu"]
-				fmt.Printf("%s,%s,%s,%s,%s,%d\n", pod.Name, pod.Namespace, pod.Status.PodIP, pod.Spec.NodeName, pod.Status.Phase, gpu.Value())
+				gpus += int(gpu.Value())
+				fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20d\n", pod.Name, pod.Namespace, pod.Status.PodIP, pod.Spec.NodeName, pod.Status.Phase, gpu.Value())
 			}
 		}
 	}
