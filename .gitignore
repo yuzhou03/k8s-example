@@ -16,6 +16,8 @@ _output/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 gpunums
+set-git.sh
+
 
 .idea/
 .vscode/

@@ -116,8 +116,9 @@ func (t *task) Start(ctx context.Context) error {
 	defer klog.Infoln("Stopping example task")
 
 	// add your logic here
-	var gpus int
-	fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20s\n", "pod.Name", "pod.Namespace", "pod.Status.PodIP", "pod.Spec.NodeName", "pod.Status.Phase", "gpunums")
+	var gpus_requested int
+	var gpus_limits int
+	fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20s\n", "pod.Name", "pod.Namespace", "pod.Status.PodIP", "pod.Spec.NodeName", "pod.Status.Phase", "gpu.Requested", "gpu.Limits")
 	for _, ns := range t.namespace {
 		podList, err := t.client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
@@ -129,13 +130,17 @@ func (t *task) Start(ctx context.Context) error {
 				pod.Status.Phase != corev1.PodFailed &&
 				pod.DeletionTimestamp == nil {
 				reqs := resource.PodRequests(&pod, resource.PodResourcesOptions{})
-				gpu := reqs["nvidia.com/gpu"]
-				gpus += int(gpu.Value())
-				fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20d\n", pod.Name, pod.Namespace, pod.Status.PodIP, pod.Spec.NodeName, pod.Status.Phase, gpu.Value())
+				limits := resource.PodLimits(&pod, resource.PodResourcesOptions{})
+				gpu_req := reqs["nvidia.com/gpu"]
+				gpu_limit := limits["nvidia.com/gpu"]
+				gpus_requested += int(gpu_req.Value())
+				gpus_limits += int(gpu_limit.Value())
+				fmt.Printf("%-40s\t%-20s\t%-20s\t%-20s\t%-20s\t%-20d\t%-20d\n", pod.Name, pod.Namespace, pod.Status.PodIP, pod.Spec.NodeName, pod.Status.Phase, gpu_req.Value(), gpu_limit.Value())
 			}
 		}
 	}
-	klog.Infoln("total gpus: ", gpus)
+	klog.Infoln("total gpu-requested: ", gpus_requested)
+	klog.Infoln("total gpu-limits: ", gpus_limits)
 	return nil
 }
 
