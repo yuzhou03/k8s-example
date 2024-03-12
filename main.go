@@ -1,20 +1,37 @@
 package main
 
 import (
-	"os"
-
 	apiserver "k8s.io/apiserver/pkg/server"
-	"k8s.io/component-base/cli"
 
+	gpunums "github.com/Garrybest/k8s-example/cmd/gpunums"
 	scheduletest "github.com/Garrybest/k8s-example/cmd/schedtest"
-	// gpunums "github.com/Garrybest/k8s-example/cmd/gpunums"
+	"github.com/spf13/cobra"
 )
 
 func main() {
 	ctx := apiserver.SetupSignalContext()
+
+	// 创建一个根命令
+	rootCmd := &cobra.Command{
+		Use:   "k8s-testing",
+		Short: "My k8s testing tool based on corba",
+	}
+
+	// 添加 "task" 子命令
+	taskCmd := &cobra.Command{
+		Use:   "task",
+		Short: "Perform a task",
+	}
+
 	// modify your example app command here
-	cmd := scheduletest.NewCommand(ctx)
-	// cmd := gpunums.NewCommand(ctx)
-	code := cli.Run(cmd)
-	os.Exit(code)
+
+	cmdScheduletest := scheduletest.NewCommand(ctx)
+	cmdGPUNums := gpunums.NewCommand(ctx)
+	taskCmd.AddCommand(cmdScheduletest)
+	taskCmd.AddCommand(cmdGPUNums)
+
+	rootCmd.AddCommand(taskCmd)
+
+	// 执行根命令
+	rootCmd.Execute()
 }
