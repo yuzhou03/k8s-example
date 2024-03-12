@@ -30,6 +30,8 @@ type options struct {
 	// ClusterAPIBurst is the burst to allow while talking with cluster kube-apiserver.
 	clusterAPIBurst int
 	namespace       string
+	// 测试次数
+	repeat int
 }
 
 func newOptions() *options {
@@ -46,6 +48,7 @@ func (o *options) addFlags(fs *pflag.FlagSet) {
 	fs.Float32Var(&o.clusterAPIQPS, "kube-api-qps", 20.0, "QPS to use while talking with apiserver. Doesn't cover events and node heartbeat apis which rate limiting is controlled by a different set of flags.")
 	fs.IntVar(&o.clusterAPIBurst, "kube-api-burst", 30, "Burst to use while talking with apiserver. Doesn't cover events and node heartbeat apis which rate limiting is controlled by a different set of flags.")
 	fs.StringVar(&o.namespace, "namespace", metav1.NamespaceAll, "Namespace that take effect.")
+	fs.IntVar(&o.repeat, "repeat", 5, "repeat num for testing")
 }
 
 func NewCommand(ctx context.Context) *cobra.Command {
@@ -113,11 +116,12 @@ type task struct {
 
 	lister    corelister.PodLister
 	namespace string
+	repeat    int
 }
 
 func (t *task) Start(ctx context.Context) error {
 	stopCh := ctx.Done()
-	klog.Infoln("Starting example task")
+	klog.Infof("Starting example task. repeats: %d\n", t.repeat)
 	defer klog.Infoln("Stopping example task")
 
 	t.informerFactory.Start(stopCh)
@@ -127,12 +131,20 @@ func (t *task) Start(ctx context.Context) error {
 	duration := 5 * time.Second
 	ticker := time.Tick(duration)
 
+	repeat := 0
+
 	for {
 		select {
 		case <-ticker:
 			pods, err := t.lister.Pods(t.namespace).List(labels.Everything())
 			if err != nil {
 				return fmt.Errorf("failed to list pods: %v", err)
+			}
+
+			repeat++
+			if repeat > t.repeat {
+				klog.Infof("reach %d repeats. testing finished!", t.repeat)
+				return nil
 			}
 
 			var (
@@ -160,7 +172,7 @@ func (t *task) Start(ctx context.Context) error {
 			klog.Infof("All: %d, Scheduled: %d, Unscheduled: %d, Max: %v, Avg: %v", len(pods), scheduled, len(pods)-scheduled, m, avg)
 
 		case <-stopCh:
-			break
+			return nil
 		}
 	}
 }
@@ -172,6 +184,7 @@ func newTask(client kubernetes.Interface, factory informers.SharedInformerFactor
 
 		lister:    factory.Core().V1().Pods().Lister(),
 		namespace: opts.namespace,
+		repeat:    opts.repeat,
 	}
 
 	// add your logic here
